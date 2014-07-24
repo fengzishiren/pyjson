@@ -1,72 +1,17 @@
 # coding: utf-8
 '''
+Created on 2014年7月23日
+
 @author: lunatic
 '''
 import json
+from lexer import Lexer, TAG
 
-
-
-class Token(object):
-    def __init__(self, content, _type):
-        self.content = content
-        self.type = _type
-    def __str__(self):
-        return ' '.join((self.content, TAG.MAP[(self.type)]))
-
-class TAG:
-    OPEN_BRACE = 1  # {
-    CLOSE_BRACE = 2  # }
-    OPEN_BRACKET = 3  # [
-    CLOSE_BRACKET = 4  # ]
-    KEY = 5  # key ->string
-    STRING = 6  # string
-    COLON = 7  # :
-    NUMBER = 8  # 10 8 18 9.10101
-    BOOLEAN = 9  # true false
-    COMMA = 10  # ,
-    NULL = 11  # null
-    
-    MAP = {1:'{', 2:'}', 3:'[', 4:']', 5:'String', 6:'String', 7:':', 8:'Number', 9:'Bool', 10:',', 11:'NULL'}
-    
-tokens = [
-    Token('{', TAG.OPEN_BRACE),
-    Token('name', TAG.KEY),
-    Token(':', TAG.COLON),
-    Token('hzzhenglh', TAG.STRING),
-    Token(',', TAG.COMMA),
-    Token('profile', TAG.KEY),
-    Token(':', TAG.COLON),
-    Token('{', TAG.OPEN_BRACE),
-    Token('name', TAG.KEY),
-    Token(':', TAG.COLON),
-    Token('hzzhenglh', TAG.STRING),
-    Token('}', TAG.CLOSE_BRACE),
-    Token(',', TAG.COMMA),
-    Token('hobby', TAG.KEY),
-    Token(':', TAG.COLON),
-    Token('[', TAG.OPEN_BRACKET),
-    Token('soccer', TAG.STRING),
-    Token(',', TAG.COMMA),
-    Token('basketball', TAG.STRING),
-    Token(']', TAG.CLOSE_BRACKET),
-    Token('}', TAG.CLOSE_BRACE),
-]
-
-class Lexer(object):
-    def __init__(self):
-        self.offset = 0
-        self.end = tokens.__len__()
-    def scan(self):
-        if self.offset == self.end:
-            return None;
-        token = tokens[self.offset]
-        self.offset += 1
-        return token
 
 class Parser(object):
     
-    def __init__(self):
-        self.lexer = Lexer()
+    def __init__(self, text):
+        self.lexer = Lexer(text)
         self.move()
         
     def move(self):
@@ -80,36 +25,46 @@ class Parser(object):
         return ret
         
     def parse(self):
-        if self.is_obj():
+        if self.is_open_brace():
             return self.obj()
-        if self.is_arr():
+        if self.is_open_bracket():
             return self.arr()
     
         self.error('Expect \'{\' or \'[\'')
 
     
-    def match(self, _type):
-        if self.token.type == _type:
+    def match(self, __type):
+        if self.token._type == __type:
             self.move()
-        else:self.error('Expect \'%s\'' % TAG.MAP[_type])
+        else:self.error('Expect \'%s\'' % TAG.MAP[__type])
              
     def obj(self):
         ret_dict = {}
         self.match(TAG.OPEN_BRACE)
+        #Note: Mybe, Object is empty
+        if self.is_close_brace():
+            self.match(TAG.CLOSE_BRACE)        
+            return ret_dict
         
-        while True:
+        while not self.is_close_brace():
             key, val = self.pair()
             ret_dict[key] = val
             if self.is_sep():
                 self.match(TAG.COMMA)
             else:
                 break
+            
         self.match(TAG.CLOSE_BRACE)
         return ret_dict
       
     def arr(self):
         ret_list = []
         self.match(TAG.OPEN_BRACKET)
+        #Note: Mybe, list is empty
+        if self.is_close_bracket():
+            self.match(TAG.CLOSE_BRACKET)        
+            return ret_list
+        
         while True:
             val = self.value()
             ret_list.append(val)
@@ -117,6 +72,7 @@ class Parser(object):
                 self.match(TAG.COMMA)
             else:
                 break
+            
         self.match(TAG.CLOSE_BRACKET)        
         return ret_list
         
@@ -136,27 +92,36 @@ class Parser(object):
         else:return self.parse()
         
     def is_sep(self):
-        print self.token
-        return self.token.type == TAG.COMMA
-    def is_obj(self):
-        return self.token.type == TAG.OPEN_BRACE
-    def is_arr(self):
-        return self.token.type == TAG.OPEN_BRACKET       
+        return self.token._type == TAG.COMMA
+    
+    def is_open_brace(self):
+        return self.token._type == TAG.OPEN_BRACE
+    def is_open_bracket(self):
+        return self.token._type == TAG.OPEN_BRACKET       
+    def is_close_brace(self):
+        return self.token._type == TAG.CLOSE_BRACE
+    def is_close_bracket(self):
+        return self.token._type == TAG.CLOSE_BRACKET
     def is_val(self):
         """
         string, number, false, true, null,
         """
-        return  self.token.type == TAG.BOOLEAN or\
-                self.token.type == TAG.NUMBER or\
-                self.token.type == TAG.STRING or\
-                self.token.type == TAG.NULL
+        return  self.token._type == TAG.BOOLEAN or\
+                self.token._type == TAG.NUMBER or\
+                self.token._type == TAG.STRING or\
+                self.token._type == TAG.NULL
     
     def error(self, msg):
-        raise Exception("Syntax Error! %s" % msg)
+        raise Exception('Syntax error: %s (%s)' % (msg, self.token.pos))
             
         
 def main():
-    ret = Parser().program()
+    #text = "{\"firstName\":\"Brett\",\"lastName\":\"McLaughlin\",\"email\":\"aaaa\", \"age\":18, \"sex\":true, \"wife\":null}";
+    
+    with open("test.json") as f:
+        text = '\n'.join(f.readlines())
+        
+    ret = Parser(text).program()
     print ret
     print json.dumps(ret)
 
