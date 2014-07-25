@@ -84,13 +84,17 @@ class Lexer(object):
                 self.forward()
             if self.text.__len__() == self.offset:
                 self.error('Expect "\""', Pos(self.row, self.col))
+            
             content = self.text[start+1:self.offset]#Note: skip "
             pos = Pos(self.row, self.col)
+            
             self.forward() #Note: skip "
             self.skip_space()
+            
             if self.text.__len__() == self.offset:
                 self.error('Expect ":" or "," or "}" or "]"', Pos(self.row, self.col))
             _type = TAG.KEY if self.text[self.offset] == ':' else TAG.STRING
+            
             return Token(content, _type, pos)
         else:
             while True:
@@ -100,10 +104,11 @@ class Lexer(object):
                     self.text[self.offset].isdigit()):
                     continue
                 else: break 
+            
             pos = Pos(self.row, self.col)
+            
             if self.text.__len__() == self.offset:
                 self.error('Expect "," or "}" or "]"', pos)
-            
             content = self.text[start: self.offset]
             
             if content == 'null':
