@@ -21,7 +21,7 @@ class Parser(object):
     def program(self):
         ret = self.parse()
         if self.token != None:
-            self.error('Expecting \'EOF\'')
+            self.error('Expecting "EOF"')
         return ret
         
     def parse(self):
@@ -30,13 +30,13 @@ class Parser(object):
         if self.is_open_bracket():
             return self.arr()
     
-        self.error('Expect \'{\' or \'[\'')
+        self.error('Expect "{" or "["')
 
     
     def match(self, __type):
         if self.token._type == __type:
             self.move()
-        else:self.error('Expect \'%s\'' % TAG.MAP[__type])
+        else:self.error('Expect "%s"' % TAG.MAP[__type])
              
     def obj(self):
         ret_dict = {}
