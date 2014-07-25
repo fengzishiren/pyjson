@@ -16,7 +16,7 @@ class Parser(object):
         
     def move(self):
         self.token = self.lexer.scan()
-        print self.token
+        #print self.token
     
     def program(self):
         ret = self.parse()
@@ -116,14 +116,14 @@ class Parser(object):
             
         
 def main():
-    #text = "{\"firstName\":\"Brett\",\"lastName\":\"McLaughlin\",\"email\":\"aaaa\", \"age\":18, \"sex\":true, \"wife\":null}";
-    
-    with open("test.json") as f:
-        text = '\n'.join(f.readlines())
-        
+    text = "{\"firstName\":\"Brett\",\"lastName\":\"McLaughlin\",\"email\":\"aaaa\\\\\\\"bbbb\", \"age\":18, \"sex\":true, \"wife\":null}";
+#     with open("testbig.json") as f:
+#             text = '\n'.join(f.readlines())
     ret = Parser(text).program()
     print ret
+    print json.loads(text)
     print json.dumps(ret)
+    print text
 
 if __name__ == '__main__':
     main()
