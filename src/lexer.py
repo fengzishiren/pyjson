@@ -25,7 +25,7 @@ class Pos:
         self.row = row
         self.col = col
     def __str__(self):
-        return '(%s, %s)' % (self.row, self.col)
+        return '(%s, %s)' % (str(self.row + 1), str(self.col + 1))
     
 class Token(object):
     def __init__(self, content, _type, pos):
@@ -34,12 +34,12 @@ class Token(object):
         self.pos = pos
         
     def __str__(self):
-        return ', '.join(('Token: ', self.content, TAG.MAP[self._type], self.pos.__str__()))
+        return ', '.join(('Token: ', str(self.content), TAG.MAP[self._type], self.pos.__str__()))
     
 class Lexer(object):
-    TAG_MAP = {'{':TAG.OPEN_BRACE, '}':TAG.CLOSE_BRACE,
-               '[':TAG.OPEN_BRACKET, ']':TAG.CLOSE_BRACKET,
-               ':':TAG.COLON, ',':TAG.COMMA}
+    TAG_MAP = {'{':TAG.OPEN_BRACE, '}':TAG.CLOSE_BRACE, '[':TAG.OPEN_BRACKET, ']':TAG.CLOSE_BRACKET, ':':TAG.COLON, ',':TAG.COMMA}
+    
+    ESCAPE_DICT = {'\\"':'"', '\\\\':'\\', '\\/':'\/', '\\b':'\b', '\\f':'\f', '\\n':'\n', '\\r':'\r', '\\t':'\t', '\\u':'\u'}        
     
     def __init__(self, text):
         self.text = text
@@ -57,7 +57,6 @@ class Lexer(object):
         while self.text.__len__() != self.offset\
              and self.text[self.offset].isspace():
             self.forward()
-             
     def scan(self):
         self.skip_space()
         if self.text.__len__() == self.offset:
@@ -72,23 +71,35 @@ class Lexer(object):
         'STRING', 'NUMBER', 'NULL', 'TRUE', 'FALSE',
         '''
         if self.text[self.offset] == '"':
+            
             self.forward()
+            content = ''
+
             while self.text.__len__() != self.offset:
-                if self.text[self.offset] == '"':
-                    back = self.offset - 1
-                    while back >= 0 and self.text[back] == '\\':
-                        back -= 1
-                    if back < 0 or (self.offset - back) & 1 == 0:
-                        self.error('Expect "\"', Pos(self.row, self.col))
+                if self.text[self.offset] == '\\':
+                    if self.offset + 1 == self.text.__len__():
+                        self.error('Expect "\""', Pos(self.row, self.col))
+                    else:
+                        character = self.ESCAPE_DICT.get(self.text[self.offset:self.offset + 2])
+                        # print 'character', character
+                        if character == None:
+                            self.error('Unsuppor escap character', Pos(self.row, self.col))
+                        else:
+                            content += character
+                            self.forward()
+                elif self.text[self.offset] == '\"':
                     break
+                else:
+                    content += self.text[self.offset]
                 self.forward()
+                        
             if self.text.__len__() == self.offset:
                 self.error('Expect "\""', Pos(self.row, self.col))
             
-            content = self.text[start+1:self.offset]#Note: skip "
+            # content = self.text[start+1:self.offset]#Note: skip "
             pos = Pos(self.row, self.col)
             
-            self.forward() #Note: skip "
+            self.forward()  # Note: skip "
             self.skip_space()
             
             if self.text.__len__() == self.offset:
@@ -111,24 +122,34 @@ class Lexer(object):
                 self.error('Expect "," or "}" or "]"', pos)
             content = self.text[start: self.offset]
             
+            val = None
             if content == 'null':
                 _type = TAG.NULL
             elif content == 'true' or content == 'false':
                 _type = TAG.BOOLEAN
+                val = True if content == 'true' else False
             else:
+                _type = TAG.NUMBER
                 try:
-                    Decimal(content)
-                    _type = TAG.NUMBER
+                    val = int(content)
                 except:
-                    self.error('Unrecognized "%s"' % content, pos)
-            return Token(content, _type, pos)
+                    try:
+                        val = long(content)
+                    except:
+                        try:
+                            val = float(content)
+                        except:
+                            self.error('Unrecognized "%s"' % content, pos)
+            return Token(val, _type, pos)
                 
             
     def error(self, msg, pos):
         raise Exception('Syntax error: %s (%s)' % (msg, pos))
 
 if __name__ == '__main__':
-    text = "{\"firstName\":\"Brett\",\"lastName\":\"McLaughlin\",\"email\":\"aaaa\", \"age\":18, \"sex\":true, \"wife\":null}";
+    text = "{\"firstName\":\"Brett\",\"lastName\":\"McLaughlin\",\"email\":\"aaaa\\\"bbbb\", \"age\":18, \"sex\":true, \"wife\":null}";
+    print text
+    
     lexer = Lexer(text)
     while True:
         token = lexer.scan()
