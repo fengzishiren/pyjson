@@ -1,6 +1,6 @@
 # coding: utf-8
 '''
-Created on 2014年7月23日
+Created on 2014年7月26日
 
 @author: lunatic
 '''
@@ -37,8 +37,9 @@ class Token(object):
     
 class Lexer(object):
     TAG_MAP = {'{':TAG.OPEN_BRACE, '}':TAG.CLOSE_BRACE, '[':TAG.OPEN_BRACKET, ']':TAG.CLOSE_BRACKET, ':':TAG.COLON, ',':TAG.COMMA}
-    ESCAPE_DICT = {'\\"':'"', '\\\\':'\\', '\\/':'/', '\\b':'\b', '\\f':'\f', '\\n':'\n', '\\r':'\r', '\\t':'\t'}#, '\\u':'\u'}        
-    
+    #row data : escape char
+    ESCAPE_DICT = {r'\"':'"', r'\\':'\\', r'\/':'/', r'\b':'\b', r'\f':'\f', r'\n':'\n', r'\r':'\r', r'\t':'\t'}  # , '\\u':'\u'}        
+
     def load(self, text):
         self.text = text
         self.offset, self.row, self.col = 0, 0, 0
@@ -72,16 +73,15 @@ class Lexer(object):
             
             self.forward()
             content = ''
-
+            # note: escape char 
             while self.text.__len__() != self.offset:
                 if self.text[self.offset] == '\\':
                     if self.offset + 1 == self.text.__len__():
-                        self.error('Expect "\""', Pos(self.row, self.col))
+                        self.error('Expect """', Pos(self.row, self.col))
                     else:
                         character = self.ESCAPE_DICT.get(self.text[self.offset:self.offset + 2])
-                        # print 'character', character
                         if character == None:
-                            self.error('Unsuppor escap character', Pos(self.row, self.col))
+                            self.error('Unsupport escape character', Pos(self.row, self.col))
                         else:
                             content += character
                             self.forward()
@@ -92,9 +92,8 @@ class Lexer(object):
                 self.forward()
                         
             if self.text.__len__() == self.offset:
-                self.error('Expect "\""', Pos(self.row, self.col))
+                self.error('Expect """', Pos(self.row, self.col))
             
-            # content = self.text[start+1:self.offset]#Note: skip "
             pos = Pos(self.row, self.col)
             
             self.forward()  # Note: skip "
@@ -144,16 +143,98 @@ class Lexer(object):
     def error(self, msg, pos):
         raise Exception('Syntax error: %s (%s)' % (msg, pos))
 
-if __name__ == '__main__':
-    text = "{\"firstName\":\"Brett\",\"lastName\":\"McLaughlin\",\"email\":\"aaaa\\\"bbbb\", \"age\":18, \"sex\":true, \"wife\":null}";
-    print text
+
+class Parser(object):
     
-    lexer = Lexer(text)
-    while True:
-        token = lexer.scan()
-        if token == None:
-            break
-        print token
-    for k, v in Lexer.ESCAPE_DICT.items():
-        print k, ': ' , v
-    print 'end'
+    def __init__(self):
+        self.lexer = Lexer()
+        
+    def move(self):
+        self.token = self.lexer.scan()
+
+    def parse_json(self, text):
+        self.lexer.load(text)
+        
+        self.move()
+        ret = self.parse()
+        if self.token != None:
+            self.error('Expecting "EOF"')
+        return ret
+    
+    def parse(self):
+        if self.token._type == TAG.OPEN_BRACE:
+            return self.obj()
+        if self.token._type == TAG.OPEN_BRACKET :
+            return self.arr()
+    
+        self.error('Expect "{" or "["')
+
+    
+    def match(self, __type):
+        if self.token._type == __type:
+            self.move()
+        else:self.error('Expect "%s"' % TAG.MAP[__type])
+             
+    def obj(self):
+        ret_dict = {}
+        self.match(TAG.OPEN_BRACE)
+        
+        while self.token._type != TAG.CLOSE_BRACE:
+            key, val = self.pair()
+            ret_dict[key] = val
+            if self.token._type == TAG.COMMA:
+                self.match(TAG.COMMA)
+            else:
+                break
+            
+        self.match(TAG.CLOSE_BRACE)
+        return ret_dict
+      
+    def arr(self):
+        ret_list = []
+        self.match(TAG.OPEN_BRACKET)
+        
+        while self.token._type != TAG.CLOSE_BRACKET:
+            val = self.value()
+            ret_list.append(val)
+            if self.token._type == TAG.COMMA:
+                self.match(TAG.COMMA)
+            else:
+                break
+            
+        self.match(TAG.CLOSE_BRACKET)        
+        return ret_list
+        
+    # "name":"hzzhenglh", ....
+    def pair(self):
+        key = self.token.content
+        self.match(TAG.KEY)
+        self.match(TAG.COLON)  # :
+        val = self.value()
+        return (key, val)
+   
+    def value(self):
+        if self.is_val():
+            content = self.token.content  
+            self.move()
+            return content
+        else:return self.parse()
+        
+    def is_val(self):
+        """
+        string, number, false, true, null,
+        """
+        return  self.token._type == TAG.BOOLEAN or\
+                self.token._type == TAG.NUMBER or\
+                self.token._type == TAG.STRING or\
+                self.token._type == TAG.NULL
+    
+    def error(self, msg):
+        raise Exception('Syntax error: %s (%s)' % (msg, self.token.pos))
+            
+
+
+
+if __name__ == '__main__':
+    pass
+
