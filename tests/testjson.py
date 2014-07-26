@@ -14,7 +14,7 @@ class Test(unittest.TestCase):
     def testJson(self):
         with open("testbig.json") as f:
             text = '\n'.join(f.readlines())
-        ret = Parser(text).program()
+        ret = Parser().parse_json(text)
         print ret
         print json.dumps(ret)
 
