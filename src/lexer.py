@@ -4,7 +4,6 @@ Created on 2014年7月23日
 
 @author: lunatic
 '''
-from decimal import Decimal
 
 class TAG:
     OPEN_BRACE = 1  # {
@@ -38,13 +37,12 @@ class Token(object):
     
 class Lexer(object):
     TAG_MAP = {'{':TAG.OPEN_BRACE, '}':TAG.CLOSE_BRACE, '[':TAG.OPEN_BRACKET, ']':TAG.CLOSE_BRACKET, ':':TAG.COLON, ',':TAG.COMMA}
+    ESCAPE_DICT = {'\\"':'"', '\\\\':'\\', '\\/':'/', '\\b':'\b', '\\f':'\f', '\\n':'\n', '\\r':'\r', '\\t':'\t'}#, '\\u':'\u'}        
     
-    ESCAPE_DICT = {'\\"':'"', '\\\\':'\\', '\\/':'\/', '\\b':'\b', '\\f':'\f', '\\n':'\n', '\\r':'\r', '\\t':'\t', '\\u':'\u'}        
-    
-    def __init__(self, text):
+    def load(self, text):
         self.text = text
         self.offset, self.row, self.col = 0, 0, 0
-
+        
     def forward(self):
         if self.text[self.offset] == '\n':
             self.row += 1
@@ -87,7 +85,7 @@ class Lexer(object):
                         else:
                             content += character
                             self.forward()
-                elif self.text[self.offset] == '\"':
+                elif self.text[self.offset] == '"':
                     break
                 else:
                     content += self.text[self.offset]
@@ -156,3 +154,6 @@ if __name__ == '__main__':
         if token == None:
             break
         print token
+    for k, v in Lexer.ESCAPE_DICT.items():
+        print k, ': ' , v
+    print 'end'
