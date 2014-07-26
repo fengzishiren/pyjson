@@ -10,24 +10,25 @@ from lexer import Lexer, TAG
 
 class Parser(object):
     
-    def __init__(self, text):
-        self.lexer = Lexer(text)
-        self.move()
+    def __init__(self):
+        self.lexer = Lexer()
         
     def move(self):
         self.token = self.lexer.scan()
-        #print self.token
-    
-    def program(self):
+
+    def parse_json(self, text):
+        self.lexer.load(text)
+        
+        self.move()
         ret = self.parse()
         if self.token != None:
             self.error('Expecting "EOF"')
         return ret
-        
+    
     def parse(self):
-        if self.is_open_brace():
+        if self.token._type == TAG.OPEN_BRACE:
             return self.obj()
-        if self.is_open_bracket():
+        if self.token._type == TAG.OPEN_BRACKET :
             return self.arr()
     
         self.error('Expect "{" or "["')
@@ -41,15 +42,11 @@ class Parser(object):
     def obj(self):
         ret_dict = {}
         self.match(TAG.OPEN_BRACE)
-        #Note: Mybe, Object is empty
-        if self.is_close_brace():
-            self.match(TAG.CLOSE_BRACE)        
-            return ret_dict
         
-        while not self.is_close_brace():
+        while self.token._type != TAG.CLOSE_BRACE:
             key, val = self.pair()
             ret_dict[key] = val
-            if self.is_sep():
+            if self.token._type == TAG.COMMA:
                 self.match(TAG.COMMA)
             else:
                 break
@@ -60,15 +57,11 @@ class Parser(object):
     def arr(self):
         ret_list = []
         self.match(TAG.OPEN_BRACKET)
-        #Note: Mybe, list is empty
-        if self.is_close_bracket():
-            self.match(TAG.CLOSE_BRACKET)        
-            return ret_list
         
-        while True:
+        while self.token._type != TAG.CLOSE_BRACKET:
             val = self.value()
             ret_list.append(val)
-            if self.is_sep():
+            if self.token._type == TAG.COMMA:
                 self.match(TAG.COMMA)
             else:
                 break
@@ -91,17 +84,6 @@ class Parser(object):
             return content
         else:return self.parse()
         
-    def is_sep(self):
-        return self.token._type == TAG.COMMA
-    
-    def is_open_brace(self):
-        return self.token._type == TAG.OPEN_BRACE
-    def is_open_bracket(self):
-        return self.token._type == TAG.OPEN_BRACKET       
-    def is_close_brace(self):
-        return self.token._type == TAG.CLOSE_BRACE
-    def is_close_bracket(self):
-        return self.token._type == TAG.CLOSE_BRACKET
     def is_val(self):
         """
         string, number, false, true, null,
@@ -119,7 +101,7 @@ def main():
     text = "{\"firstName\":\"Brett\",\"lastName\":\"McLaughlin\",\"email\":\"aaaa\\\\\\\"bbbb\", \"age\":18, \"sex\":true, \"wife\":null}";
 #     with open("testbig.json") as f:
 #             text = '\n'.join(f.readlines())
-    ret = Parser(text).program()
+    ret = Parser().parse_json(text)
     print ret
     print json.loads(text)
     print json.dumps(ret)
