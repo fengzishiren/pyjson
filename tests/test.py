@@ -1,12 +1,12 @@
 # coding: utf-8
 '''
-Created on 2014年7月24日
+Created on 2014年7月26日
 
-@author: hzzhenglh
+@author: lunatic
 '''
-import unittest
 import json
-from parser import Parser
+import unittest
+from pyjson import Parser
 
 class Test(unittest.TestCase):
 
@@ -14,13 +14,10 @@ class Test(unittest.TestCase):
     def testJson(self):
         with open("testbig.json") as f:
             text = '\n'.join(f.readlines())
-        #text = "{\"firstName\":\"Brett\",\"lastName\":\"McLaughlin\",\"email\":\"aaaa\\\"\", \"age\":18, \"sex\":true, \"wife\":null}";
-
-        ret = Parser(text).program()
+        ret = Parser().parse_json(text)
         print ret
         print json.dumps(ret)
-
-
+        #print json.dumps(ret)
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
