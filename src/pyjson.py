@@ -53,8 +53,7 @@ class Lexer(object):
         self.offset += 1
         
     def skip_space(self):
-        while self.text.__len__() != self.offset\
-             and self.text[self.offset].isspace():
+        while self.text.__len__() != self.offset and self.text[self.offset].isspace():
             self.forward()
             
     def scan(self):
@@ -78,9 +77,9 @@ class Lexer(object):
             # note: escape char 
             while self.text.__len__() != self.offset:
                 if self.text[self.offset] == '\\':
-                    #assert not end
+                    # assert not end
                     self.not_end(self.offset + 1 != self.text.__len__(), 'Expect """', Pos(self.row, self.col))
-                    #escape char
+                    # escape char
                     character = self.ESCAPE_DICT.get(self.text[self.offset:self.offset + 2])
                     if character == None:
                         self.error('Unsupport escape character', Pos(self.row, self.col))
@@ -92,13 +91,13 @@ class Lexer(object):
                 else:
                     content += self.text[self.offset]
                 self.forward()
-            #test not end
+            # test not end
             self.not_end(self.text.__len__() != self.offset, 'Expect """', Pos(self.row, self.col))
             pos = Pos(self.row, self.col)
             # Note: skip "
             self.forward()  
             self.skip_space()
-            #retest not end
+            # retest not end
             self.not_end(self.text.__len__() != self.offset, 'Expect ":" or "," or "}" or "]"', Pos(self.row, self.col))
                     
             _type = TAG.KEY if self.text[self.offset] == ':' else TAG.STRING
@@ -113,7 +112,7 @@ class Lexer(object):
             
             pos = Pos(self.row, self.col)
             self.not_end(self.text.__len__() != self.offset, 'Expect "," or "}" or "]"', pos)
-            #process content
+            # process content
             content = self.text[start: self.offset]
             val = None
             if content == 'null':
