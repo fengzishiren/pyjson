@@ -107,9 +107,7 @@ class Lexer(object):
         else:
             while True:
                 self.forward()
-                if self.text.__len__() != self.offset and \
-                    (self.text[self.offset].isalpha() or\
-                    self.text[self.offset].isdigit()):
+                if self.text.__len__() != self.offset and (self.text[self.offset].isalpha() or self.text[self.offset].isdigit()):
                     continue
                 else: break 
             
