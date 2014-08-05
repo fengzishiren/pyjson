@@ -12,7 +12,7 @@ class Test(unittest.TestCase):
 
 
     def testJson(self):
-        with open("testbig.json") as f:
+        with open("test.json") as f:
             text = '\n'.join(f.readlines())
         ret = Parser().parse_json(text)
         print ret
