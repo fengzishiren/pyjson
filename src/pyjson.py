@@ -27,10 +27,10 @@ class Pos:
         return '(%s, %s)' % (str(self.row + 1), str(self.col + 1))
     
 class Token(object):
-    def __init__(self, content, _type, pos):
+    def __init__(self, content, _type, row, col):
         self.content = content
         self._type = _type
-        self.pos = pos
+        self.pos = Pos(row, col)
         
     def __str__(self):
         return ', '.join(('Token: ', str(self.content), TAG.MAP[self._type], self.pos.__str__()))
@@ -65,20 +65,21 @@ class Lexer(object):
         start = self.offset
         _type = self.TAG_MAP.get(self.text[self.offset])
         if _type:
+            tok = Token(self.text[start: self.offset], _type, self.row, self.col)
             self.forward()
-            return Token(self.text[start: self.offset], _type, Pos(self.row, self.col - 1))
+            return tok
         '''
         'STRING', 'NUMBER', 'NULL', 'TRUE', 'FALSE',
         '''
         if self.text[self.offset] == '"':
-            
             self.forward()
+            row, col = self.row, self.col
             content = ''
             # note: escape char 
             while self.text.__len__() != self.offset:
                 if self.text[self.offset] == '\\':
                     # assert not end
-                    self.not_end(self.offset + 1 != self.text.__len__(), 'Expect """', Pos(self.row, self.col))
+                    self.not_end(self.offset + 1 != self.text.__len__(), 'Expect """', self.row, self.col)
                     # escape char
                     character = self.ESCAPE_DICT.get(self.text[self.offset:self.offset + 2])
                     if character == None:
@@ -92,27 +93,30 @@ class Lexer(object):
                     content += self.text[self.offset]
                 self.forward()
             # test not end
-            self.not_end(self.text.__len__() != self.offset, 'Expect """', Pos(self.row, self.col))
-            pos = Pos(self.row, self.col)
+            self.not_end(self.text.__len__() != self.offset, 'Expect """', self.row, self.col)
             # Note: skip "
-            self.forward()  
+            self.forward()
             self.skip_space()
             # retest not end
-            self.not_end(self.text.__len__() != self.offset, 'Expect ":" or "," or "}" or "]"', Pos(self.row, self.col))
+            self.not_end(self.text.__len__() != self.offset, 'Expect ":" or "," or "}" or "]"', self.row, self.col)
                     
             _type = TAG.KEY if self.text[self.offset] == ':' else TAG.STRING
             
-            return Token(content, _type, pos)
+            return Token(content, _type, row, col)
         else:
-            while True:
+            # eg. null true false 
+            # eg. 5280, 0.01234, 6.336E(+)4, 1.89E-4
+            while self.text.__len__() != self.offset and (self.text[self.offset].isalnum() 
+                                                          or self.text[self.offset] == '.'
+                                                          or self.text[self.offset] == '-'
+                                                          or self.text[self.offset] == '+'):
                 self.forward()
-                if self.text.__len__() != self.offset and (self.text[self.offset].isalpha() or self.text[self.offset].isdigit()):
-                    continue
-                else: break 
+            self.not_end(self.text.__len__() != self.offset, 'Expect "," or "}" or "]"', self.row, self.col)
             
-            pos = Pos(self.row, self.col)
-            self.not_end(self.text.__len__() != self.offset, 'Expect "," or "}" or "]"', pos)
+            if start == self.offset:
+                self.error('Unrecognized "%s"' % self.text[start], self.row, self.col)
             # process content
+            row, col = self.row, self.col
             content = self.text[start: self.offset]
             val = None
             if content == 'null':
@@ -122,26 +126,29 @@ class Lexer(object):
                 val = True if content == 'true' else False
             else:
                 _type = TAG.NUMBER
-                try:
-                    val = int(content)
-                except:
+                if content.find('.') == -1:
                     try:
-                        val = long(content)
+                        val = int(content)
                     except:
                         try:
-                            val = float(content)
+                            val = long(content)
                         except:
-                            self.error('Unrecognized "%s"' % content, pos)
-            return Token(val, _type, pos)
+                            self.error('Unrecognized "%s"' % content, row, col)
+                else:
+                    try:
+                        val = float(content)
+                    except:
+                        self.error('Unrecognized "%s"' % content, row, col)
+            return Token(val, _type, self.row, self.col)
                 
      
     
-    def not_end(self, condition, msg, pos):
+    def not_end(self, condition, msg, row, col):
         if not condition:
-            self.error(msg, pos)       
+            self.error(msg, Pos(row, col))       
         
-    def error(self, msg, pos):
-        raise Exception('Syntax error: %s (%s)' % (msg, pos))
+    def error(self, msg, row, col):
+        raise Exception('Syntax error: %s (%s)' % (msg, Pos(row, col)))
 
 
 class Parser(object):
