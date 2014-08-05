@@ -139,7 +139,7 @@ class Lexer(object):
                         val = float(content)
                     except:
                         self.error('Unrecognized "%s"' % content, row, col)
-            return Token(val, _type, self.row, self.col)
+            return Token(val, _type, row, col)
                 
      
     
