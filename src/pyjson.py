@@ -105,7 +105,7 @@ class Lexer(object):
             return Token(content, _type, row, col)
         else:
             # eg. null true false 
-            # eg. 5280, 0.01234, 6.336E(+)4, 1.89E-4
+            # eg. 5280, 0.01234, 6.336E(+)4, 1.89E-4, 2E4
             while self.text.__len__() != self.offset and (self.text[self.offset].isalnum() 
                                                           or self.text[self.offset] == '.'
                                                           or self.text[self.offset] == '-'
@@ -126,7 +126,7 @@ class Lexer(object):
                 val = True if content == 'true' else False
             else:
                 _type = TAG.NUMBER
-                if content.find('.') == -1:
+                if content.find('.') == -1 and content.find('E') == -1:
                     try:
                         val = int(content)
                     except:
@@ -141,7 +141,6 @@ class Lexer(object):
                         self.error('Unrecognized "%s"' % content, row, col)
             return Token(val, _type, row, col)
                 
-     
     
     def not_end(self, condition, msg, row, col):
         if not condition:
