@@ -10,14 +10,14 @@ class TAG:
     CLOSE_BRACE = 2  # }
     OPEN_BRACKET = 3  # [
     CLOSE_BRACKET = 4  # ]
-    KEY = 5  # key ->string
-    STRING = 6  # string
+    KEY = 5  # key ->STRING
+    STRING = 6  # STRING
     COLON = 7  # :
     NUMBER = 8  # 10 8 18 9.10101
     BOOLEAN = 9  # true false
     COMMA = 10  # ,
     NULL = 11  # null
-    MAP = {1:'{', 2:'}', 3:'[', 4:']', 5:'Key(String)', 6:'String', 7:':', 8:'Number', 9:'Bool', 10:',', 11:'NULL'}
+    MAP = {1:'{', 2:'}', 3:'[', 4:']', 5:'Key(STRING)', 6:'STRING', 7:':', 8:'Number', 9:'Bool', 10:',', 11:'NULL'}
 
 class Pos:
     def __init__(self, row, col):
@@ -144,7 +144,7 @@ class Lexer(object):
     
     def not_end(self, condition, msg, row, col):
         if not condition:
-            self.error(msg, Pos(row, col))       
+            self.error(msg, row, col)       
         
     def error(self, msg, row, col):
         raise Exception('Syntax error: %s (%s)' % (msg, Pos(row, col)))
@@ -168,51 +168,53 @@ class Parser(object):
         return ret
     
     def parse(self):
+        self.restrict(TAG.OPEN_BRACE, TAG.OPEN_BRACKET)
         if self.token._type == TAG.OPEN_BRACE:
             return self.obj()
         if self.token._type == TAG.OPEN_BRACKET :
             return self.arr()
     
         self.error('Expect "{" or "["')
-
     
     def match(self, __type):
-        if self.token._type == __type:
+        if self.token and self.token._type == __type:
             self.move()
         else:self.error('Expect "%s"' % TAG.MAP[__type])
              
     def obj(self):
         ret_dict = {}
         self.match(TAG.OPEN_BRACE)
+        self.restrict(TAG.KEY, TAG.CLOSE_BRACE)
         
-        while self.token._type != TAG.CLOSE_BRACE:
+        if self.token._type == TAG.KEY:
             key, val = self.pair()
             ret_dict[key] = val
-            if self.token._type == TAG.COMMA:
+            while self.restrict(TAG.COMMA, TAG.CLOSE_BRACE) and self.token._type == TAG.COMMA:
                 self.match(TAG.COMMA)
-            else:
-                break
-            
+                key, val = self.pair()
+                ret_dict[key] = val
+                
         self.match(TAG.CLOSE_BRACE)
         return ret_dict
       
     def arr(self):
         ret_list = []
         self.match(TAG.OPEN_BRACKET)
-        
-        while self.token._type != TAG.CLOSE_BRACKET:
+        self.restrict(TAG.STRING, TAG.NULL, TAG.NUMBER, TAG.BOOLEAN, TAG.OPEN_BRACE, TAG.OPEN_BRACKET, TAG.CLOSE_BRACKET)
+
+        if self.token._type != TAG.CLOSE_BRACKET:
             val = self.value()
             ret_list.append(val)
-            if self.token._type == TAG.COMMA:
+            while self.restrict(TAG.COMMA, TAG.CLOSE_BRACKET) and self.token._type == TAG.COMMA:
                 self.match(TAG.COMMA)
-            else:
-                break
+                val = self.value()
+                ret_list.append(val)
             
         self.match(TAG.CLOSE_BRACKET)        
         return ret_list
-        
-    # "name":"hzzhenglh", ....
+            
     def pair(self):
+        self.restrict(TAG.KEY)
         key = self.token.content
         self.match(TAG.KEY)
         self.match(TAG.COLON)  # :
@@ -220,6 +222,7 @@ class Parser(object):
         return (key, val)
    
     def value(self):
+        self.restrict(TAG.STRING, TAG.NULL, TAG.NUMBER, TAG.BOOLEAN, TAG.OPEN_BRACE, TAG.OPEN_BRACKET)
         if self.is_val():
             content = self.token.content  
             self.move()
@@ -228,18 +231,21 @@ class Parser(object):
         
     def is_val(self):
         """
-        string, number, false, true, null,
+        STRING, number, false, true, null,
         """
         return  self.token._type == TAG.BOOLEAN or\
                 self.token._type == TAG.NUMBER or\
                 self.token._type == TAG.STRING or\
                 self.token._type == TAG.NULL
+                
+    def restrict(self, *types):
+        if self.token and self.token._type in types:
+            return True
+        else:self.error('Expect %s' % ' '.join(['"%s"' % TAG.MAP[t] for t in types]))
     
     def error(self, msg):
         raise Exception('Syntax error: %s (%s)' % (msg, self.token.pos))
             
-
-
 
 if __name__ == '__main__':
     pass
